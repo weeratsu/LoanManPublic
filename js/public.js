@@ -5,8 +5,10 @@ function safeRender(){renderC();}
 var busy=false;
 async function unlock(){if(busy)return;var pin=$('pin').value.trim(),m=$('pinMsg');if(!pin)return;busy=true;m.textContent='กำลังตรวจสอบ…';
   var its=(window.LMP_DATA&&LMP_DATA.items)||[],ok=null;
-  for(var i=0;i<its.length&&!ok;i++){try{ok=await lmDec(pin,its[i]);}catch(e){}}
-  if(!ok){m.textContent='PIN ไม่ถูกต้อง';setTimeout(function(){busy=false;m.textContent='';},2000);$('pin').value='';return;}
+  if(!window.crypto||!crypto.subtle){m.textContent='⚠ browser นี้ใช้ถอดรหัสไม่ได้ (ต้องเปิดผ่าน https หรือ Chrome/Edge)';busy=false;return;}
+  if(!its.length){m.textContent='⚠ ไม่พบข้อมูลใน data.js';busy=false;return;}
+  var err='';for(var i=0;i<its.length&&!ok;i++){try{ok=await lmDec(pin,its[i]);}catch(e){if(e&&e.name!=='OperationError')err=e.name+': '+e.message;}}
+  if(!ok){m.textContent=err?'⚠ '+err:'PIN ไม่ถูกต้อง ('+its.length+' ชุดข้อมูล)';setTimeout(function(){busy=false;m.textContent='';},2000);$('pin').value='';return;}
   DB=ok;busy=false;$('pin').value='';$('pinBox').classList.add('hide');$('view').classList.remove('hide');$('lockBtn').style.display='';render();}
 function render(){var p=DB.people[0];$('who').textContent='👤 '+p.name;$('upd').textContent='ข้อมูล ณ '+new Date(DB.at).toLocaleString('th-TH');
   var L=DB.debtors.map(function(d){return {d:d,c:calc(d,0,0)}}).sort(function(a,b){var x=isClosed(a.d,a.c)?1:0,y=isClosed(b.d,b.c)?1:0;return x-y||(b.d.start||'').localeCompare(a.d.start||'')});
