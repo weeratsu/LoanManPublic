@@ -35,3 +35,13 @@ function todayLine(labels){var td=today();return {id:'todayLine',afterDatasetsDr
   if(i<n-1){var fr=days(labels[i],td)/Math.max(days(labels[i],labels[i+1]),1);px+=(x.getPixelForValue(i+1)-px)*fr;}
   var c=ch.ctx,L=px>a.right-90;c.save();c.strokeStyle='#2a64b8';c.lineWidth=1.5;c.setLineDash([4,3]);c.beginPath();c.moveTo(px,a.top);c.lineTo(px,a.bottom);c.stroke();c.setLineDash([]);
   c.fillStyle='#2a64b8';c.beginPath();c.arc(px,a.top,3.5,0,7);c.fill();c.font='600 11px '+(Chart.defaults.font.family||'sans-serif');c.textAlign=L?'right':'left';c.fillText('📍 วันนี้ '+td,px+(L?-6:6),a.top+12);c.restore();}};}
+
+/* คลิกแถวงวด → popup รายการ trx ของงวดนั้น (วันที่ >= วันตัดรอบ และ < วันตัดรอบถัดไป) */
+function showPop(title,html){var bg=document.createElement('div');bg.style.cssText='position:fixed;inset:0;background:#0006;z-index:2000;display:flex;align-items:flex-start;justify-content:center;padding:60px 12px;overflow:auto';
+  bg.innerHTML='<div style="background:#fff;border-radius:12px;padding:18px;max-width:760px;width:100%;box-shadow:0 10px 40px #0004"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">'+title+'</h3><button class="btn g s">✕ ปิด</button></div><div style="margin-top:12px;overflow:auto">'+html+'</div></div>';
+  function cl(){bg.remove();document.removeEventListener('keydown',k,true);}function k(e){if(e.key==='Escape'){cl();e.stopPropagation();e.preventDefault();}}
+  bg.querySelector('button').onclick=cl;bg.onclick=function(e){if(e.target===bg)cl();};document.addEventListener('keydown',k,true);document.body.appendChild(bg);}
+function perTx(did,b,nb){var d=getD(did),pv=prevB(b,+(d&&d.day)||1),tx=txOf(did).filter(function(t){return t.date>pv&&t.date<=b}),inn=0,out=0;
+  var h=tx.map(function(t){if(t.type==='repay')inn+=t.amt;else out+=t.amt;var m=t.m||(t.mid&&typeof mName==='function'?mName(t.mid):'');
+    return '<tr><td class="l">'+t.date+'</td><td class="l"><span class="tag '+(t.type==='borrow'?'tb">ยืม':'tr">คืน')+'</span></td><td class="neg">'+(t.type==='repay'?f(t.amt):'')+'</td><td class="pos">'+(t.type==='borrow'?f(t.amt):'')+'</td><td class="l">'+m+'</td><td class="l">'+(t.note||'')+'</td></tr>'}).join('');
+  showPop('งวด '+addDay(pv,1)+' → '+b+' (ตัดยอด)'+' · '+(d?d.name:''),tx.length?'<table><tr><th class="l">วันที่</th><th class="l">ประเภท</th><th>คืน</th><th>ยืม</th><th class="l">วิธีจ่าย</th><th class="l">หมายเหตุ</th></tr>'+h+'<tr class="tot"><td class="l">รวม '+tx.length+' รายการ</td><td></td><td>'+f(inn)+'</td><td>'+f(out)+'</td><td class="l" colspan="2">สุทธิ '+f(inn-out)+'</td></tr></table>':'<p class="muted">งวดนี้ไม่มีรายการยืม/คืน'+(d&&d.kind!=='daily'?' (ผ่อนตามตาราง)':'')+'</p>');}

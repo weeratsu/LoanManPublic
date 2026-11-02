@@ -26,3 +26,5 @@ td.rm{white-space:normal;min-width:260px;max-width:420px;font-size:12px;color:#5
 .mft{display:flex;justify-content:space-between;gap:10px;margin-top:16px;border-top:1px solid #eee;padding-top:12px}.addbar{display:flex;justify-content:flex-end;margin-bottom:10px}
 .tsbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}.tsbar input{width:280px}
 table tr.closed td,table tr.closed td a{opacity:.65;color:#666}table tr.closed:hover td{opacity:.8}
+th{position:sticky;top:0;z-index:3;background:#f0f3f8;box-shadow:0 1px 0 #dde3ec}th:hover{background:#e3e9f3}
+tr.clk{cursor:pointer}tr.clk:hover td{background:#e3ecfa!important}
