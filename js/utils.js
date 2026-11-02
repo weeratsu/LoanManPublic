@@ -28,3 +28,10 @@ function repair(){var ch=0;
 /* สัญญาลิงก์วิธีจ่าย (mid) — แปลง bid เดิม → บัตรของธนาคารนั้น (สร้างให้ถ้ายังไม่มี) */
 function bid2mid(){DB.debtors.forEach(function(d){if(d.bid&&!d.mid){var m=DB.methods.find(function(x){return x.type==='card'&&x.bid===d.bid});
   if(!m){var b=(DB.banks||[]).find(function(x){return x.id===d.bid});m={id:nextId('m',DB.methods),name:'บัตร '+(b?b.name:d.bid),type:'card',bid:d.bid};DB.methods.push(m);}d.mid=m.id;}if(d.mid)delete d.bid;});}
+
+/* เส้น "วันนี้" บนกราฟรายงวด (labels = วันตัดรอบ YYYY-MM-DD) — วางตามสัดส่วนวันระหว่างงวด */
+function todayLine(labels){var td=today();return {id:'todayLine',afterDatasetsDraw:function(ch){var x=ch.scales.x,a=ch.chartArea,n=labels.length;if(!x||!n||td<labels[0]||td>labels[n-1])return;
+  var i=0;for(var k=0;k<n;k++)if(labels[k]<=td)i=k;var px=x.getPixelForValue(i);
+  if(i<n-1){var fr=days(labels[i],td)/Math.max(days(labels[i],labels[i+1]),1);px+=(x.getPixelForValue(i+1)-px)*fr;}
+  var c=ch.ctx,L=px>a.right-90;c.save();c.strokeStyle='#2a64b8';c.lineWidth=1.5;c.setLineDash([4,3]);c.beginPath();c.moveTo(px,a.top);c.lineTo(px,a.bottom);c.stroke();c.setLineDash([]);
+  c.fillStyle='#2a64b8';c.beginPath();c.arc(px,a.top,3.5,0,7);c.fill();c.font='600 11px '+(Chart.defaults.font.family||'sans-serif');c.textAlign=L?'right':'left';c.fillText('📍 วันนี้ '+td,px+(L?-6:6),a.top+12);c.restore();}};}
