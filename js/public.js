@@ -1,0 +1,24 @@
+/* LoanManPublic — read only, ไม่มี localStorage/แก้ไข/import/export */
+var DB={people:[],debtors:[],txns:[]},CH={},COL=['#2a64b8','#e67e22','#27ae60','#8e44ad','#c0392b'],KIND={daily:'เงินสด ดอกรายวัน',card:'ผ่อนบัตร',hist:'ประวัติ'};
+function chart(id,cfg){if(typeof Chart==='undefined')return;try{if(CH[id])CH[id].destroy();CH[id]=new Chart($(id),cfg);}catch(e){}}
+function safeRender(){renderC();}
+var busy=false;
+async function unlock(){if(busy)return;var pin=$('pin').value.trim(),m=$('pinMsg');if(!pin)return;busy=true;m.textContent='กำลังตรวจสอบ…';
+  var its=(window.LMP_DATA&&LMP_DATA.items)||[],ok=null;
+  for(var i=0;i<its.length&&!ok;i++){try{ok=await lmDec(pin,its[i]);}catch(e){}}
+  if(!ok){m.textContent='PIN ไม่ถูกต้อง';setTimeout(function(){busy=false;m.textContent='';},2000);$('pin').value='';return;}
+  DB=ok;busy=false;$('pin').value='';$('pinBox').classList.add('hide');$('view').classList.remove('hide');$('lockBtn').style.display='';render();}
+function render(){var p=DB.people[0];$('who').textContent='👤 '+p.name;$('upd').textContent='ข้อมูล ณ '+new Date(DB.at).toLocaleString('th-TH');
+  var L=DB.debtors.map(function(d){return {d:d,c:calc(d,0,0)}}).sort(function(a,b){var x=isClosed(a.d,a.c)?1:0,y=isClosed(b.d,b.c)?1:0;return x-y||(b.d.start||'').localeCompare(a.d.start||'')});
+  var T={P:0,I:0,paid:0,pI:0,n:0};L.forEach(function(o){var cl=isClosed(o.d,o.c);if(!cl){T.n++;T.I+=o.c.I;}T.P+=o.c.P;T.paid+=o.c.tot.paid;T.pI+=o.c.tot.paidI;});
+  $('kpis').innerHTML=[['ยอดคงเหลือ',f(T.P),'pos'],['ดอกสะสมถึงวันนี้',f(T.I),''],['รวมที่ต้องชำระ',f(T.P+T.I),'pos'],['ชำระแล้วรวม',f(T.paid),'neg'],['ดอกที่ชำระแล้ว',f(T.pI),''],['สัญญาที่ยังผ่อน',T.n+' / '+L.length,'']].map(function(k){return '<div class="kpi"><small>'+k[0]+'</small><b class="'+k[2]+'">'+k[1]+'</b></div>'}).join('');
+  $('cTbl').innerHTML='<table><tr><th class="l">สัญญา</th><th class="l">ประเภท</th><th>ดอก</th><th>ค่างวด</th><th class="l">เริ่ม</th><th>ยอดยกมา</th><th>ชำระแล้ว</th><th>คงเหลือ</th><th class="l">สถานะ</th></tr>'+L.map(function(o){var d=o.d,c=o.c,cl=isClosed(d,c);
+    return '<tr'+(cl?' class="closed"':'')+'><td class="l"><a href="#" onclick="$(\'selC\').value=\''+d.id+'\';renderC();$(\'perTbl\').scrollIntoView();return false">'+d.name+'</a></td><td class="l">'+(KIND[d.kind]||KIND.daily)+(d.mname?' · '+d.mname:'')+'</td><td>'+d.rate+'%</td><td>'+f(+d.inst)+'</td><td class="l">'+(d.start||'')+'</td><td>'+f(+d.openP)+'</td><td>'+f(c.tot.paid)+'</td><td class="pos">'+f(c.P)+'</td><td class="l">'+(cl?'✅ ปิดแล้ว':'🟢 ผ่อนอยู่')+'</td></tr>'}).join('')+'</table>';
+  $('selC').innerHTML=L.map(function(o){return '<option value="'+o.d.id+'">'+o.d.name+(isClosed(o.d,o.c)?' (ปิดแล้ว)':'')+'</option>'}).join('');renderC();}
+function renderC(){var d=getD($('selC').value);if(!d)return;var c=calc(d),h='';
+  c.per.forEach(function(p){h+='<tr'+(p.fc?' class="fc"':'')+'><td>'+p.idx+'</td><td class="l">'+p.b+(p.fc?' 🔮':'')+'</td><td>'+f(p.oP)+'</td><td>'+f(p.int)+'</td><td>'+f(p.due)+'</td><td class="neg">'+(p.paid?f(p.paid):'')+'</td><td class="pos">'+(p.borrow?f(p.borrow):'')+'</td><td>'+f(p.pP)+'</td><td>'+f(p.pI)+'</td><td><b>'+f(p.cP)+'</b></td></tr>';});
+  $('perTbl').innerHTML='<table><tr><th>#</th><th class="l">วันตัดรอบ</th><th>ยอดยกมา</th><th>ดอกงวดนี้</th><th>ยอดดิว</th><th>ชำระ</th><th>ยืมเพิ่ม</th><th>ชำระ:ต้น</th><th>ชำระ:ดอก</th><th>คงเหลือ</th></tr>'+h+'</table>';
+  chart('cPer',{type:'line',data:{labels:c.per.map(function(p){return p.b}),datasets:[{label:'คงเหลือ',data:c.per.map(function(p){return +p.cP.toFixed(2)}),borderColor:'#c0392b',backgroundColor:'#c0392b22',fill:true,pointRadius:0,segment:{borderDash:function(x){return c.per[x.p1DataIndex].fc?[6,4]:undefined}}}]}});
+  var tx=txOf(d.id).slice().reverse();
+  $('txTbl').innerHTML=tx.length?'<table><tr><th class="l">วันที่</th><th class="l">ประเภท</th><th>ชำระ</th><th>ยืม</th><th class="l">วิธีจ่าย</th><th class="l">หมายเหตุ</th></tr>'+tx.map(function(t){return '<tr><td class="l">'+t.date+'</td><td class="l"><span class="tag '+(t.type==='borrow'?'tb">ยืม':'tr">ชำระ')+'</span></td><td class="neg">'+(t.type==='repay'?f(t.amt):'')+'</td><td class="pos">'+(t.type==='borrow'?f(t.amt):'')+'</td><td class="l">'+(t.m||'')+'</td><td class="l">'+(t.note||'')+'</td></tr>'}).join('')+'</table>':'<p class="muted">สัญญานี้ไม่มีรายการยืม/คืน (ผ่อนตามตาราง)</p>';}
+$('pin').addEventListener('keydown',function(e){if(e.key==='Enter')unlock();});
