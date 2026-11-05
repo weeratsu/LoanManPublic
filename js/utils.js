@@ -45,3 +45,8 @@ function perTx(did,b,nb){var d=getD(did),pv=prevB(b,+(d&&d.day)||1),tx=txOf(did)
   var h=tx.map(function(t){if(t.type==='repay')inn+=t.amt;else out+=t.amt;var m=t.m||(t.mid&&typeof mName==='function'?mName(t.mid):'');
     return '<tr><td class="l">'+t.date+'</td><td class="l"><span class="tag '+(t.type==='borrow'?'tb">ยืม':'tr">คืน')+'</span></td><td class="neg">'+(t.type==='repay'?f(t.amt):'')+'</td><td class="pos">'+(t.type==='borrow'?f(t.amt):'')+'</td><td class="l">'+m+'</td><td class="l">'+(t.note||'')+'</td></tr>'}).join('');
   showPop('งวด '+addDay(pv,1)+' → '+b+' (ตัดยอด)'+' · '+(d?d.name:''),tx.length?'<table><tr><th class="l">วันที่</th><th class="l">ประเภท</th><th>คืน</th><th>ยืม</th><th class="l">วิธีจ่าย</th><th class="l">หมายเหตุ</th></tr>'+h+'<tr class="tot"><td class="l">รวม '+tx.length+' รายการ</td><td></td><td>'+f(inn)+'</td><td>'+f(out)+'</td><td class="l" colspan="2">สุทธิ '+f(inn-out)+'</td></tr></table>':'<p class="muted">งวดนี้ไม่มีรายการยืม/คืน'+(d&&d.kind!=='daily'?' (ผ่อนตามตาราง)':'')+'</p>');}
+
+/* scroll ตารางสรุปงวดไปที่งวดล่าสุด (แถวจริงแถวสุดท้าย) ให้อยู่กลางกล่อง */
+function scrollLatest(id){var c=document.getElementById(id);if(!c)return;var rs=c.querySelectorAll('tr'),t=null;
+  rs.forEach(function(r){if(!r.querySelector('th')&&!r.classList.contains('tot')&&!(r.classList.contains('fc')&&!r.classList.contains('clk')&&false)&&!r.classList.contains('fc'))t=r;});
+  if(!t)return;c.scrollTop=Math.max(t.offsetTop-c.clientHeight/2,0);}
