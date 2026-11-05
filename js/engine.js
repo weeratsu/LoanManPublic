@@ -11,25 +11,23 @@ function calc(d,pay,maxF){
   var tx=txOf(d.id),day=+d.day||1,r=yr(d),inst=+d.inst||0,td=today();
   var auto=pay==null;if(auto)pay=inst;if(maxF==null)maxF=600;if(d.status==='closed')maxF=0;
   var start=d.start||(tx[0]&&tx[0].date);if(!start)return {per:[],P:0,I:0,tot:{lent:0,paid:0,paidI:0,paidP:0,int:0}};
-  var P=+d.openP||0,prev=addDay(start,-1),b=firstB(start,day),per=[],k=0,i=0,f=0,last=null;
+  var P=+d.openP||0,CI=0,prev=addDay(start,-1),b=firstB(start,day),per=[],k=0,i=0,f=0,last=null;
   var tot={lent:+d.openP||0,paid:0,paidI:0,paidP:0,int:0};
   while(i<1200){i++;
-    /* แบบ statement ธนาคาร: งวด 4→3 · ดอกรายวันจากต้นคงค้างจริงระหว่างรายการ · จ่ายตัดดอกค้างก่อน · ดอกค้างทบเข้ายอด ณ วันตัดรอบ */
-    var nb=nextB(b,day),n=days(prev,b),real=b<=td,bor=0,rep=0,c=0,P0=P,A=0,H=0,pI=0,lt=prev;
-    function acc(t){var x=P>0?P*r*Math.max(days(lt,t),0)/365:0;A+=x;H+=x;lt=t;}
-    function payA(a){var x=Math.min(a,Math.max(A,0));A-=x;pI+=x;P-=a-x;rep+=a;}
-    while(k<tx.length&&tx[k].date<=b){var t=tx[k++];c++;acc(addDay(t.date,-1));if(t.type==='borrow'){P+=t.amt;bor+=t.amt;}else payA(t.amt);}
-    acc(b);var J=P0+H;
-    if(!real){if(!c&&(f>=maxF||P+A<=0.005||!(auto||pay>0)))break;var py=auto?instAt(d,b):pay;if(!(py>0))py=0;var extra=Math.max(0,Math.min(P+A,py-rep));if(extra>0)payA(extra);f++;}
-    var ia=instAt(d,b),due=ia>0?Math.min(ia,Math.max(J+bor,0)):H,dI=Math.min(due,H);
-    var p={idx:per.length+1,m:ym(b),b:b,nb:nb,days:n,oP:P0,int:H,owe:J,borrow:bor,paid:rep,pI:pI,pP:rep-pI,cP:P+A,cI:0,due:due,dI:dI,dP:due-dI,net:rep-bor,diff:rep-bor-due,n:c,fc:!real};
+    /* แบบ Excel: ดอก = ยอดยกมา × อัตรา × วัน(ตัดรอบก่อน→ตัดรอบนี้) ÷ 365 · trx วันที่ >= ตัดรอบนี้ และ < ตัดรอบถัดไป หักในงวดนี้
+       คืน:ดอก = ดอกงวดนี้เต็มจำนวน · คืน:ต้น = สุทธิ − ดอก (ติดลบ = ทบต้น) · คงเหลือ = ยอดยกมา + ดอก − สุทธิ */
+    var nb=nextB(b,day),n=days(prev,b),real=nb<=td,bor=0,rep=0,c=0,P0=P,H=P>0?P*r*n/365:0,J=P+H;
+    while(k<tx.length&&tx[k].date<nb){var t=tx[k++];c++;if(t.type==='borrow')bor+=t.amt;else rep+=t.amt;}
+    if(!real){if(!c&&(f>=maxF||J<=0.005||!(auto||pay>0)))break;var py=auto?instAt(d,b):pay;if(!(py>0)){if(!c)break;py=0;}rep=Math.max(rep,Math.min(J+bor,py));f++;}
+    var pI=H,ia=instAt(d,b),due=ia>0?Math.min(ia,Math.max(J,0)):H,dI=Math.min(due,H);
+    var p={idx:per.length+1,m:ym(b),b:b,nb:nb,days:n,oP:P0,int:H,owe:J,borrow:bor,paid:rep,pI:pI,pP:rep-bor-pI,cP:J-rep+bor,cI:0,due:due,dI:dI,dP:due-dI,net:rep-bor,diff:rep-bor-due,n:c,fc:!real};
     per.push(p);if(real){last=p;tot.lent+=bor;tot.paid+=rep;tot.paidI+=pI;tot.paidP+=rep-pI;tot.int+=H;}
     if(!real&&rep<=H&&f>2){p.never=true;break;}
     if(real&&d.status==='closed'&&k>=tx.length)break;
     P=p.cP;prev=b;b=nb;
     if(real&&k>=tx.length&&nb>td&&!(pay>0)&&maxF===0)break;
   }
-  var cur=last?last.cP:(+d.openP||0),acc=last&&cur>0?cur*r*Math.max(days(last.b,td),0)/365:0;
+  var ob=last?last.nb:'',cur=last?last.cP:(+d.openP||0);tx.forEach(function(t){if(t.date>=ob&&t.date<=td){if(t.type==='borrow'){cur+=t.amt;tot.lent+=t.amt;}else{cur-=t.amt;tot.paid+=t.amt;tot.paidP+=t.amt;}}});var acc=last&&cur>0?cur*r*Math.max(days(last.b,td),0)/365:0;
   return {per:per,P:cur,I:acc,tot:tot,last:last};
 }
 function real(c){return c.per.filter(function(p){return !p.fc});}

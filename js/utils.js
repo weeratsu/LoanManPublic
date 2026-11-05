@@ -11,7 +11,7 @@ function txOf(id){return DB.txns.filter(function(t){return t.did===id}).sort(fun
 function getP(id){return (DB.people||[]).find(function(x){return x.id===id});}
 function pName(d){var p=d&&getP(d.pid);return p?p.name:'-';}
 function cLabel(d){return pName(d)+' · '+d.name;}
-function isClosed(d,c){return d.status==='closed'||(c&&c.P<=0.005&&c.per.length>0);}
+function isClosed(d,c){if(d.status==='closed')return true;var has=(+d.openP>0)||(d.rows&&d.rows.length)||(DB.txns||[]).some(function(t){return t.did===d.id});return !!(has&&c&&c.last&&c.P<=0.005&&!c.per.some(function(p){return p.fc&&(p.borrow>0||p.cP>0.005)}));}
 function opts(list,val,all){return (all?'<option value="">'+all+'</option>':'')+list.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===val?' selected':'')+'>'+x[1]+'</option>'}).join('');}
 function migrate(){if(!DB.people)DB.people=[];if(!DB.banks)DB.banks=[['KBank','กสิกรไทย'],['SCB','ไทยพาณิชย์'],['BBL','กรุงเทพ'],['KTB','กรุงไทย'],['BAY','กรุงศรีอยุธยา'],['ttb','ทีทีบี'],['UOB','ยูโอบี']].map(function(x,i){return {id:'b'+(i+1),name:x[0],full:x[1]}});if(!DB.methods)DB.methods=[{id:'m1',name:'เงินสด',type:'cash'},{id:'m2',name:'โอนเงิน',type:'transfer'}];if(!DB.txns)DB.txns=[];DB.debtors.forEach(function(d){if(!d.pid||!getP(d.pid)){var nm=d.pname||d.person||(DB.people[0]&&DB.people[0].name)||d.name,p=DB.people.find(function(x){return x.name===nm});if(!p){p={id:nextId('p',DB.people),name:nm};DB.people.push(p);}d.pid=p.id;}});repair();bid2mid();}
 function nextId(pre,list){var n=0;list.forEach(function(x){var m=new RegExp('^'+pre+'(\\d+)$').exec(x.id||'');if(m)n=Math.max(n,+m[1]);});return pre+(n+1);}
@@ -41,10 +41,10 @@ function showPop(title,html){var bg=document.createElement('div');bg.style.cssTe
   bg.innerHTML='<div style="background:#fff;border-radius:12px;padding:18px;max-width:760px;width:100%;box-shadow:0 10px 40px #0004"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">'+title+'</h3><button class="btn g s">✕ ปิด</button></div><div style="margin-top:12px;overflow:auto">'+html+'</div></div>';
   function cl(){bg.remove();document.removeEventListener('keydown',k,true);}function k(e){if(e.key==='Escape'){cl();e.stopPropagation();e.preventDefault();}}
   bg.querySelector('button').onclick=cl;bg.onclick=function(e){if(e.target===bg)cl();};document.addEventListener('keydown',k,true);document.body.appendChild(bg);}
-function perTx(did,b,nb){var d=getD(did),pv=prevB(b,+(d&&d.day)||1),tx=txOf(did).filter(function(t){return t.date>pv&&t.date<=b}),inn=0,out=0;
+function perTx(did,b,nb){var d=getD(did),ne=nb||nextB(b,+(d&&d.day)||1),tx=txOf(did).filter(function(t){return t.date>=b&&t.date<ne}),inn=0,out=0;
   var h=tx.map(function(t){if(t.type==='repay')inn+=t.amt;else out+=t.amt;var m=t.m||(t.mid&&typeof mName==='function'?mName(t.mid):'');
     return '<tr><td class="l">'+t.date+'</td><td class="l"><span class="tag '+(t.type==='borrow'?'tb">ยืม':'tr">คืน')+'</span></td><td class="neg">'+(t.type==='repay'?f(t.amt):'')+'</td><td class="pos">'+(t.type==='borrow'?f(t.amt):'')+'</td><td class="l">'+m+'</td><td class="l">'+(t.note||'')+'</td></tr>'}).join('');
-  showPop('งวด '+addDay(pv,1)+' → '+b+' (ตัดยอด)'+' · '+(d?d.name:''),tx.length?'<table><tr><th class="l">วันที่</th><th class="l">ประเภท</th><th>คืน</th><th>ยืม</th><th class="l">วิธีจ่าย</th><th class="l">หมายเหตุ</th></tr>'+h+'<tr class="tot"><td class="l">รวม '+tx.length+' รายการ</td><td></td><td>'+f(inn)+'</td><td>'+f(out)+'</td><td class="l" colspan="2">สุทธิ '+f(inn-out)+'</td></tr></table>':'<p class="muted">งวดนี้ไม่มีรายการยืม/คืน'+(d&&d.kind!=='daily'?' (ผ่อนตามตาราง)':'')+'</p>');}
+  showPop('งวด '+b+' · trx '+b+' → '+addDay(ne,-1)+' · '+(d?d.name:''),tx.length?'<table><tr><th class="l">วันที่</th><th class="l">ประเภท</th><th>คืน</th><th>ยืม</th><th class="l">วิธีจ่าย</th><th class="l">หมายเหตุ</th></tr>'+h+'<tr class="tot"><td class="l">รวม '+tx.length+' รายการ</td><td></td><td>'+f(inn)+'</td><td>'+f(out)+'</td><td class="l" colspan="2">สุทธิ '+f(inn-out)+'</td></tr></table>':'<p class="muted">งวดนี้ไม่มีรายการยืม/คืน'+(d&&d.kind!=='daily'?' (ผ่อนตามตาราง)':'')+'</p>');}
 
 /* scroll ตารางสรุปงวดไปที่งวดล่าสุด (แถวจริงแถวสุดท้าย) ให้อยู่กลางกล่อง */
 function scrollLatest(id){var c=document.getElementById(id);if(!c)return;var rs=c.querySelectorAll('tr'),t=null;
