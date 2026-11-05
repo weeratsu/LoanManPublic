@@ -7,7 +7,7 @@ function ym(s){return s.slice(0,7);}function mEnd(m){var y=+m.slice(0,4),mo=+m.s
 function nextM(m){var y=+m.slice(0,4),mo=+m.slice(5,7)+1;if(mo>12){mo=1;y++;}return y+'-'+String(mo).padStart(2,'0');}
 function yr(d){return d.rateU==='m'?d.rate*12/100:d.rate/100;}
 function getD(id){return DB.debtors.find(function(x){return x.id===id});}
-function txOf(id){return DB.txns.filter(function(t){return t.did===id}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0});}
+function txOf(id){return DB.txns.filter(function(t){return t.did===id}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0)});}
 function getP(id){return (DB.people||[]).find(function(x){return x.id===id});}
 function pName(d){var p=d&&getP(d.pid);return p?p.name:'-';}
 function cLabel(d){return pName(d)+' · '+d.name;}
