@@ -46,3 +46,4 @@ canvas{max-width:100%!important}
  .tlh span{white-space:normal;margin-left:0}
  #syncBadge{bottom:8px;right:8px;font-size:11px}
 }
+@keyframes lmflash{0%,100%{background:transparent}25%,75%{background:#ffe08a}}tr.flash td{animation:lmflash 1.6s ease 1}

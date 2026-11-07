@@ -50,3 +50,14 @@ function perTx(did,b,nb){var d=getD(did),ne=nb||nextB(b,+(d&&d.day)||1),tx=txOf(
 function scrollLatest(id){var c=document.getElementById(id);if(!c)return;var rs=c.querySelectorAll('tr'),t=null;
   rs.forEach(function(r){if(!r.querySelector('th')&&!r.classList.contains('tot')&&!(r.classList.contains('fc')&&!r.classList.contains('clk')&&false)&&!r.classList.contains('fc'))t=r;});
   if(!t)return;c.scrollTop=Math.max(t.offsetTop-c.clientHeight/2,0);}
+
+/* ยอดที่ต้องคืนงวดปัจจุบัน ณ วันนี้ (ต่อสัญญา) · left = ยอดดิว − คืนแล้วในงวดนี้ */
+function dueNow(d){var td=today(),c0=calc(d,0,0);if(isClosed(d,c0))return null;var c=calc(d),p=null,end='';
+  if(d.kind==='card'||d.kind==='hist'){p=c.per.find(function(x){return x.fc});if(!p)return null;return {d:d,due:p.paid,paid:0,left:p.paid,end:p.b};}
+  p=c.per.find(function(x){return x.b<=td&&td<x.nb})||(c.per[0]&&td<c.per[0].b?c.per[0]:null);if(!p)return null;end=addDay(p.nb,-1);
+  var st=p.idx===1?'0000':p.b,paid=txOf(d.id).filter(function(t){return t.type!=='borrow'&&t.date>=st&&t.date<=td&&t.date<p.nb}).reduce(function(s,t){return s+t.amt},0);
+  var due=p.due||0;if(!(instAt(d,p.b)>0)){var bal=c0.P;return {d:d,due:bal+paid,paid:paid,left:Math.max(bal,0),end:'',open:1};}return {d:d,due:due,paid:paid,left:Math.max(due-paid,0),end:end};}
+function dueSum(ds){var L=ds.map(dueNow).filter(function(x){return x&&x.due>0}),o={due:0,paid:0,left:0,end:'',tip:''};
+  L.forEach(function(x){o.due+=x.due;o.paid+=x.paid;o.left+=x.left;if(x.left>0&&(!o.end||x.end<o.end))o.end=x.end;});
+  o.tip=L.map(function(x){return x.d.name+': ค้าง '+f(x.left)+(x.open?' (ไม่กำหนดวันคืน)':' / ดิว '+f(x.due)+' (ภายใน '+x.end+')')}).join('\n');return o;}
+function dmy(s){return s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(2,4):'';}
