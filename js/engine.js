@@ -27,7 +27,7 @@ function calc(d,pay,maxF){
     P=p.cP;prev=b;b=nb;
     if(real&&k>=tx.length&&nb>td&&!(pay>0)&&maxF===0)break;
   }
-  var ob=last?last.nb:'',cur=last?last.cP:(+d.openP||0);tx.forEach(function(t){if(t.date>=ob&&t.date<=td){if(t.type==='borrow'){cur+=t.amt;tot.lent+=t.amt;}else{cur-=t.amt;tot.paid+=t.amt;tot.paidP+=t.amt;}}});var acc=last&&cur>0?cur*r*Math.max(days(last.b,td),0)/365:0;
+  var ob=last?last.nb:'',cur=last?last.cP:(+d.openP||0);tx.forEach(function(t){if(t.date>=ob&&t.date<=td){if(t.type==='borrow'){cur+=t.amt;tot.lent+=t.amt;}else{cur-=t.amt;tot.paid+=t.amt;tot.paidP+=t.amt;}}});var acc=0;if(last){var lb=last.cP>0?last.cP:0;if(td<ob)acc=lb*r*Math.max(days(last.b,td),0)/365;else acc=lb*r*days(last.b,ob)/365+(cur>0?cur*r*days(ob,td)/365:0);}
   return {per:per,P:cur,I:acc,tot:tot,last:last};
 }
 function real(c){return c.per.filter(function(p){return !p.fc});}
